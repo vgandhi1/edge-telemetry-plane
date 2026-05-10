@@ -1,0 +1,7 @@
+.git
+**/.git
+**/target
+.rustup
+.cargo
+*.md
+!README.md

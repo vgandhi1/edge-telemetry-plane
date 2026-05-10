@@ -1,0 +1,14 @@
+**/target/
+
+# Optional local Rust toolchains (see README)
+/.rustup/
+/.cargo/
+
+cloud-plane/bin/
+.venv/
+__pycache__/
+*.pyc
+.idea/
+.vscode/
+*.swp
+.DS_Store

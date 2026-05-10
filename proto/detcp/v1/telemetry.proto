@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package detcp.v1;
+
+option go_package = "detcp/cloud-plane/gen/detcp/v1;detcpv1";
+
+message TelemetryPoint {
+  string device_id = 1;
+  int64 timestamp_ms = 2;
+  map<string, double> sensors = 3;
+  string trace_id = 4;
+}
+
+message TelemetryBatch {
+  string edge_node_id = 1;
+  repeated TelemetryPoint points = 2;
+}
+
+message SyncResponse {
+  bool success = 1;
+  int32 processed_count = 2;
+}
+
+service EdgeSyncService {
+  rpc SyncTelemetry(TelemetryBatch) returns (SyncResponse);
+}
