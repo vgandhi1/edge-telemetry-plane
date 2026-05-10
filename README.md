@@ -114,7 +114,7 @@ Full design: [docs/architecture.md](docs/architecture.md)
 2. `make proto` after editing `.proto`.
 3. `cd cloud-plane && KAFKA_BROKERS=localhost:9092 go run ./cmd/ingress`
 4. `cd cloud-plane && DATABASE_URL=postgres://detcp:...@localhost:5432/detcp?sslmode=disable go run ./cmd/processor`
-5. `cd edge` — run `edge-gateway` and `edge-sync` (see [Quick start](#quick-start) env vars in [README](README.md) history or `deploy/docker-compose.yml`).
+5. `cd edge` — run `cargo run --release --bin edge-gateway` and `cargo run --release --bin edge-sync` with the same env vars as in [`deploy/docker-compose.yml`](deploy/docker-compose.yml) (`MQTT_URL`, `NATS_URL`, `INGRESS_ADDR`, `EDGE_NODE_ID`).
 
 ---
 
