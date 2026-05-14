@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"math/rand"
 	"os"
 	"os/signal"
 	"strings"
@@ -15,6 +16,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/segmentio/kafka-go"
 	"google.golang.org/protobuf/proto"
+)
+
+const (
+	persistMaxRetries = 8
+	persistBaseDelay  = 100 * time.Millisecond
+	persistMaxDelay   = 30 * time.Second
 )
 
 func main() {
@@ -74,9 +81,9 @@ func main() {
 			continue
 		}
 
-		if err := persistBatch(ctx, pool, &batch); err != nil {
-			slog.Error("persist", "error", err)
-			time.Sleep(time.Millisecond * 500)
+		if err := persistWithBackoff(ctx, pool, &batch); err != nil {
+			slog.Error("persist exhausted retries", "error", err)
+			// Do not commit: leave message for the next consumer restart.
 			continue
 		}
 
@@ -84,6 +91,35 @@ func main() {
 			slog.Error("commit", "error", err)
 		}
 	}
+}
+
+// persistWithBackoff retries persistBatch with exponential backoff + jitter.
+// It gives up after persistMaxRetries and returns the last error.
+func persistWithBackoff(ctx context.Context, pool *pgxpool.Pool, batch *detcpv1.TelemetryBatch) error {
+	delay := persistBaseDelay
+	var lastErr error
+	for attempt := 0; attempt < persistMaxRetries; attempt++ {
+		if err := persistBatch(ctx, pool, batch); err == nil {
+			return nil
+		} else {
+			lastErr = err
+			if attempt+1 == persistMaxRetries {
+				break
+			}
+			// Full jitter: sleep between [delay/2, delay) to spread thundering-herd retries.
+			jitter := time.Duration(rand.Int63n(int64(delay/2))) + delay/2
+			slog.Warn("persist failed; retrying", "attempt", attempt+1, "delay", jitter, "error", err)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(jitter):
+			}
+			if delay < persistMaxDelay {
+				delay = min(delay*2, persistMaxDelay)
+			}
+		}
+	}
+	return lastErr
 }
 
 func persistBatch(ctx context.Context, pool *pgxpool.Pool, batch *detcpv1.TelemetryBatch) error {
@@ -94,14 +130,21 @@ func persistBatch(ctx context.Context, pool *pgxpool.Pool, batch *detcpv1.Teleme
 			return err
 		}
 		_, err = pool.Exec(ctx, `
-			INSERT INTO telemetry_points (time, edge_node_id, device_id, sensors, trace_id)
-			VALUES ($1, $2, $3, $4::jsonb, $5)
-		`, ts, batch.EdgeNodeId, p.DeviceId, string(sensors), p.TraceId)
+			INSERT INTO telemetry_points (time, edge_node_id, device_id, sensors, trace_id, sequence_id)
+			VALUES ($1, $2, $3, $4::jsonb, $5, $6)
+		`, ts, batch.EdgeNodeId, p.DeviceId, string(sensors), p.TraceId, p.SequenceId)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func min(a, b time.Duration) time.Duration {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func getenv(k, def string) string {

@@ -9,6 +9,7 @@ message TelemetryPoint {
   int64 timestamp_ms = 2;
   map<string, double> sensors = 3;
   string trace_id = 4;
+  int64 sequence_id = 5;
 }
 
 message TelemetryBatch {

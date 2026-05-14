@@ -1,6 +1,16 @@
 # Full factory telemetry stack: MQTT → edge → NATS → gRPC → Kafka → TimescaleDB.
 # Run from repo root: `docker compose -f deploy/docker-compose.yml up -d --build`
 
+networks:
+  detcp-net:
+    driver: bridge
+
+volumes:
+  nats-data:
+  timescale-data:
+  kafka-data:
+  grafana-data:
+
 services:
   mosquitto:
     image: eclipse-mosquitto:2
@@ -8,12 +18,23 @@ services:
       - "1883:1883"
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    networks: [detcp-net]
 
   nats:
     image: nats:2.10-alpine
-    command: ["-js", "-m", "8222"]
+    command: ["-c", "/etc/nats/jetstream.conf"]
     ports:
       - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats-data:/data/jetstream
+      - ./nats/jetstream.conf:/etc/nats/jetstream.conf:ro
+    networks: [detcp-net]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8222/healthz || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   kafka:
     image: apache/kafka:3.7.0
@@ -31,6 +52,8 @@ services:
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    volumes: [kafka-data:/tmp/kraft-combined-logs]
+    networks: [detcp-net]
     healthcheck:
       test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
       interval: 5s
@@ -53,6 +76,7 @@ services:
           --partitions 3 \
           --replication-factor 1
         echo "Kafka topic ready."
+    networks: [detcp-net]
 
   timescaledb:
     image: timescale/timescaledb:latest-pg16
@@ -63,7 +87,9 @@ services:
       POSTGRES_PASSWORD: detcp_dev_change_me
       POSTGRES_DB: detcp
     volumes:
+      - timescale-data:/var/lib/postgresql/data
       - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks: [detcp-net]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U detcp -d detcp"]
       interval: 3s
@@ -77,14 +103,17 @@ services:
     command: ["ingress"]
     ports:
       - "50051:50051"
+      - "9101:9101"
     environment:
       KAFKA_BROKERS: kafka:29092
       GRPC_LISTEN: ":50051"
+      METRICS_ADDR: ":9101"
     depends_on:
       kafka:
         condition: service_healthy
       kafka-init:
         condition: service_completed_successfully
+    networks: [detcp-net]
 
   processor:
     build:
@@ -101,6 +130,7 @@ services:
         condition: service_completed_successfully
       timescaledb:
         condition: service_healthy
+    networks: [detcp-net]
 
   edge-gateway:
     build:
@@ -111,25 +141,92 @@ services:
       MQTT_URL: mqtt://mosquitto:1883
       NATS_URL: nats://nats:4222
       EDGE_NODE_ID: edge-01
+      RUST_LOG: info
     depends_on:
-      - mosquitto
-      - nats
+      mosquitto:
+        condition: service_started
+      nats:
+        condition: service_healthy
+    networks: [detcp-net]
+
+  # Toxiproxy sits between edge-sync and cloud ingress — the WAN link under test.
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    ports:
+      - "8474:8474"   # Toxiproxy HTTP API
+      - "8475:8475"   # Proxied gRPC endpoint (edge-sync connects here)
+    networks: [detcp-net]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8474/proxies || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot init: creates the cloud_ingress_grpc proxy rule on first boot.
+  toxiproxy-init:
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    entrypoint: >
+      sh -c "
+        toxiproxy-cli -h toxiproxy:8474 create
+          --listen 0.0.0.0:8475
+          --upstream ingress:50051
+          cloud_ingress_grpc &&
+        echo 'toxiproxy proxy created'"
+    depends_on:
+      toxiproxy:
+        condition: service_healthy
+      ingress:
+        condition: service_started
+    networks: [detcp-net]
 
   edge-sync:
     build:
       context: ..
       dockerfile: edge/Dockerfile
     command: ["edge-sync"]
+    ports:
+      - "9100:9100"
     environment:
       NATS_URL: nats://nats:4222
-      INGRESS_ADDR: http://ingress:50051
+      INGRESS_ADDR: http://toxiproxy:8475   # Routes through Toxiproxy for chaos injection
       EDGE_NODE_ID: edge-01
+      RUST_LOG: info
+      METRICS_PORT: "9100"
     depends_on:
+      nats:
+        condition: service_healthy
       edge-gateway:
         condition: service_started
-      nats:
-        condition: service_started
-      ingress:
-        condition: service_started
-      kafka-init:
+      toxiproxy-init:
         condition: service_completed_successfully
+    networks: [detcp-net]
+
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+    networks: [detcp-net]
+    depends_on:
+      - edge-sync
+      - ingress
+
+  grafana:
+    image: grafana/grafana:10.3.3
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/detcp_fault_tolerance.json
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+    networks: [detcp-net]
+    depends_on:
+      - prometheus

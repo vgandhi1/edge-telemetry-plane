@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS telemetry_points (
     edge_node_id TEXT NOT NULL,
     device_id TEXT NOT NULL,
     sensors JSONB NOT NULL DEFAULT '{}',
-    trace_id TEXT NOT NULL DEFAULT ''
+    trace_id TEXT NOT NULL DEFAULT '',
+    sequence_id BIGINT NOT NULL DEFAULT 0
 );
 
 SELECT public.create_hypertable(
