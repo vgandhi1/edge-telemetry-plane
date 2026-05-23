@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>edge-telemetry-plane — DETCP</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06090e;--bg-card:#0c1218;--bg-card2:#131c26;
+  --accent:#f97316;--accent2:#06b6d4;--accent3:#10b981;
+  --blue:#3b82f6;--text:#f1f5f9;--muted:#94a3b8;
+  --border:rgba(249,115,22,.22);--glow:rgba(249,115,22,.08);
+  --mono:'JetBrains Mono','Fira Code',Consolas,monospace;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:52px;background:rgba(6,9,14,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+.nav-logo{font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.06em}
+.nav-links{display:flex;gap:4px;flex-wrap:wrap}
+.nav-links a{font-size:10px;color:var(--muted);text-decoration:none;padding:5px 10px;border-radius:6px;transition:all .2s}
+.nav-links a:hover,.nav-links a.active{color:var(--text);background:rgba(249,115,22,.12)}
+.slide{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:88px 72px 72px;position:relative;border-bottom:1px solid rgba(249,115,22,.08)}
+.slide-num{position:absolute;top:68px;right:48px;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.12em}
+.section-label{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+.slide-title{font-size:clamp(1.5rem,3vw,2.2rem);font-weight:800;letter-spacing:-.025em;margin-bottom:8px;line-height:1.2}
+.slide-title span{color:var(--accent)}
+.slide-desc{color:var(--muted);font-size:.9rem;margin-bottom:32px;max-width:720px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:22px}
+.card h3{font-size:.92rem;font-weight:600;margin-bottom:8px}
+.card p{font-size:.82rem;color:var(--muted);line-height:1.55}
+.bt-orange{border-top:3px solid var(--accent)}
+.bt-cyan{border-top:3px solid var(--accent2)}
+.bt-green{border-top:3px solid var(--accent3)}
+.bt-blue{border-top:3px solid var(--blue)}
+.pill-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.pill{font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--muted)}
+.slide-hero{background:radial-gradient(ellipse 70% 55% at 50% 35%,rgba(249,115,22,.1) 0%,transparent 70%);align-items:center;text-align:center}
+.hero-badge{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);border:1px solid var(--border);border-radius:20px;padding:5px 18px;margin-bottom:22px;background:var(--glow)}
+.hero-h1{font-size:clamp(1.8rem,4.5vw,3rem);font-weight:900;letter-spacing:-.03em;max-width:900px;line-height:1.1;background:linear-gradient(135deg,#fff,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:16px}
+.hero-sub{font-size:1rem;color:var(--muted);max-width:640px;margin-bottom:32px}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:8px;max-width:780px;width:100%}
+.stat-box{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px 14px;text-align:center}
+.stat-val{font-family:var(--mono);font-size:1.6rem;font-weight:800;color:var(--accent)}
+.stat-lbl{font-size:.74rem;color:var(--muted);margin-top:4px}
+.arch-diagram{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:28px;font-family:var(--mono);font-size:.72rem;line-height:1.55;overflow-x:auto;white-space:pre;color:var(--muted)}
+.arch-diagram .hl{color:var(--accent)}.arch-diagram .hl2{color:var(--accent2)}.arch-diagram .hl3{color:var(--accent3)}
+.stack-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.stack-table th{background:var(--bg-card2);color:var(--muted);text-align:left;padding:10px 14px;font-size:.72rem;border-bottom:1px solid var(--border);font-family:var(--mono)}
+.stack-table td{padding:11px 14px;border-bottom:1px solid rgba(249,115,22,.06);vertical-align:top}
+.flow{display:flex;align-items:stretch;flex-wrap:wrap}
+.flow-step{flex:1;min-width:100px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 10px;text-align:center}
+.flow-step .si{font-size:1.2rem;margin-bottom:5px;display:block}
+.flow-step .sl{font-size:.76rem;font-weight:600}
+.flow-step .ss{font-size:.68rem;color:var(--muted);margin-top:3px}
+.flow-arrow{display:flex;align-items:center;padding:0 4px;color:var(--accent);font-size:1.1rem}
+pre{background:#040810;border:1px solid var(--border);border-radius:10px;padding:16px 18px;font-family:var(--mono);font-size:.72rem;line-height:1.6;overflow-x:auto;color:#cbd5e1}
+.slide-final{align-items:center;text-align:center;background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(249,115,22,.07) 0%,transparent 70%)}
+.final-h2{font-size:clamp(1.5rem,3.5vw,2.2rem);font-weight:900;margin-bottom:14px}
+.final-link{display:inline-block;margin-top:20px;padding:10px 24px;border-radius:8px;background:var(--accent);color:#000;font-weight:700;text-decoration:none;font-size:.85rem}
+@media(max-width:900px){.slide{padding:72px 24px 56px}.g2,.g3,.stat-grid{grid-template-columns:1fr}.flow{flex-direction:column}.flow-arrow{transform:rotate(90deg)}.nav-links{display:none}}
+</style>
+</head>
+<body>
+<nav>
+  <span class="nav-logo">DETCP · edge-telemetry-plane</span>
+  <div class="nav-links">
+    <a href="#title">Intro</a>
+    <a href="#why">Why</a>
+    <a href="#arch">Architecture</a>
+    <a href="#stack">Stack</a>
+    <a href="#start">Quick Start</a>
+    <a href="#summary">Summary</a>
+  </div>
+</nav>
+
+<section class="slide slide-hero" id="title">
+  <div class="hero-badge">Distributed Edge Telemetry &amp; Control Plane</div>
+  <h1 class="hero-h1">edge-telemetry-plane</h1>
+  <p class="hero-sub">
+    MQTT → Rust edge (NATS JetStream) → gRPC → Go cloud (Kafka → TimescaleDB).
+    A runnable reference stack for factory and fleet telemetry with a clear edge/cloud boundary.
+  </p>
+  <div class="pill-row">
+    <span class="pill">Rust Edge</span>
+    <span class="pill">Go Cloud</span>
+    <span class="pill">Protobuf gRPC</span>
+    <span class="pill">NATS JetStream</span>
+    <span class="pill">Kafka</span>
+    <span class="pill">TimescaleDB</span>
+    <span class="pill">Docker Compose</span>
+  </div>
+  <div class="stat-grid" style="margin-top:36px">
+    <div class="stat-box"><span class="stat-val">1883</span><div class="stat-lbl">MQTT</div></div>
+    <div class="stat-box"><span class="stat-val">4222</span><div class="stat-lbl">NATS</div></div>
+    <div class="stat-box"><span class="stat-val">50051</span><div class="stat-lbl">gRPC</div></div>
+    <div class="stat-box"><span class="stat-val">1</span><div class="stat-lbl">Proto contract</div></div>
+  </div>
+</section>
+
+<section class="slide" id="why">
+  <span class="slide-num">02 / 06</span>
+  <div class="section-label">Why DETCP</div>
+  <h2 class="slide-title">Survive WAN blips with <span>durable edge buffering</span></h2>
+  <p class="slide-desc">Factory floors are noisy. Cloud analytics need typed, batched telemetry — without losing samples when the link drops.</p>
+  <div class="g3">
+    <div class="card bt-orange"><h3>🛡 WAN resilience</h3><p>JetStream file-backed queue buffers telemetry before gRPC sync to cloud.</p></div>
+    <div class="card bt-cyan"><h3>📜 One contract</h3><p><code>detcp.v1</code> Protobuf + <code>EdgeSyncService</code> gRPC — edge and cloud stay aligned.</p></div>
+    <div class="card bt-green"><h3>🐳 Runnable locally</h3><p><code>make up</code> + Python fleet simulator → rows in TimescaleDB in minutes.</p></div>
+  </div>
+  <div class="card bt-blue" style="margin-top:24px">
+    <h3>Roadmap (planned)</h3>
+    <p>OpenTelemetry (Collector, Jaeger, Grafana) and mTLS on gRPC. The ingestion hot path works in Docker Compose today.</p>
+  </div>
+</section>
+
+<section class="slide" id="arch">
+  <span class="slide-num">03 / 06</span>
+  <div class="section-label">Architecture</div>
+  <h2 class="slide-title">Factory edge → <span>cloud plane</span></h2>
+  <div class="arch-diagram"><span class="hl">Factory Edge</span>
+  Devices ──MQTT JSON──► <span class="hl">edge-gateway</span> (Rust)
+                              │
+                              ▼
+                    NATS JetStream (file-backed)
+                              │
+                              ▼
+                    <span class="hl">edge-sync</span> (Rust)
+                              │
+                         gRPC batches
+                              ▼
+<span class="hl2">Cloud Plane</span>
+  <span class="hl2">ingress</span> (Go) ──► Kafka ──► <span class="hl2">processor</span> (Go) ──► TimescaleDB
+
+Ports: 1883 MQTT · 4222 NATS · 50051 gRPC · 5432 Timescale · 9092 Kafka</div>
+</section>
+
+<section class="slide" id="stack">
+  <span class="slide-num">04 / 06</span>
+  <div class="section-label">Repository</div>
+  <h2 class="slide-title">Layout &amp; <span>Makefile</span></h2>
+  <table class="stack-table">
+    <thead><tr><th>Path</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>proto/</code></td><td>detcp.v1 Protobuf + gRPC EdgeSyncService</td></tr>
+      <tr><td><code>edge/</code></td><td>edge-gateway, edge-sync (Rust)</td></tr>
+      <tr><td><code>cloud-plane/</code></td><td>gRPC ingress + Kafka consumer → DB (Go)</td></tr>
+      <tr><td><code>deploy/</code></td><td>Compose, Mosquitto, Timescale init SQL</td></tr>
+      <tr><td><code>scripts/</code></td><td>Fleet simulator, dev layout check</td></tr>
+      <tr><td><code>docs/</code></td><td>Architecture, phased plan, chaos runbook</td></tr>
+    </tbody>
+  </table>
+  <div class="g2" style="margin-top:24px">
+    <div class="card"><h3>make up / make down</h3><p>Start or stop the full stack (volumes removed on down).</p></div>
+    <div class="card"><h3>make proto · make smoke</h3><p>Regenerate Go from .proto; run dev check script.</p></div>
+  </div>
+</section>
+
+<section class="slide" id="start">
+  <span class="slide-num">05 / 06</span>
+  <div class="section-label">Quick Start</div>
+  <h2 class="slide-title">From clone to <span>COUNT(*)</span></h2>
+  <div class="flow" style="margin-bottom:24px">
+    <div class="flow-step"><span class="si">①</span><div class="sl">make up</div><div class="ss">Docker stack</div></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step"><span class="si">②</span><div class="sl">Simulator</div><div class="ss">10 robots @ 0.5s</div></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step"><span class="si">③</span><div class="sl">TimescaleDB</div><div class="ss">telemetry_points</div></div>
+  </div>
+  <pre>git clone https://github.com/vgandhi1/edge-telemetry-plane.git
+cd edge-telemetry-plane && make up
+
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r scripts/requirements.txt
+python3 scripts/simulate_robot_fleet.py --count 10 --interval 0.5
+
+docker compose -f deploy/docker-compose.yml exec timescaledb \
+  psql -U detcp -d detcp -c "SELECT COUNT(*) FROM telemetry_points;"</pre>
+</section>
+
+<section class="slide slide-final" id="summary">
+  <span class="slide-num">06 / 06</span>
+  <div class="section-label">Summary</div>
+  <h2 class="final-h2">Clear boundary between factory floor<br>and cloud analytics</h2>
+  <p style="color:var(--muted);max-width:560px;font-size:.95rem">DETCP: durable edge buffering, typed batches, and a path to scale with Kafka + time-series storage.</p>
+  <div class="pill-row" style="margin-top:28px">
+    <span class="pill">github.com/vgandhi1/edge-telemetry-plane</span>
+    <span class="pill">MIT License</span>
+  </div>
+  <a class="final-link" href="https://github.com/vgandhi1/edge-telemetry-plane" target="_blank" rel="noopener">View Repository →</a>
+</section>
+
+<script>
+const sections=document.querySelectorAll('.slide[id]');
+const links=document.querySelectorAll('.nav-links a');
+sections.forEach(s=>{
+  new IntersectionObserver(entries=>{
+    entries.forEach(e=>{if(e.isIntersecting)links.forEach(l=>l.classList.toggle('active',l.getAttribute('href')==='#'+e.target.id));});
+  },{rootMargin:'-40% 0px -55% 0px'}).observe(s);
+});
+document.addEventListener('keydown',e=>{
+  const ids=[...sections].map(s=>s.id);
+  const idx=ids.findIndex(id=>document.getElementById(id).getBoundingClientRect().top>=-100);
+  if(e.key==='ArrowDown'||e.key==='PageDown'){e.preventDefault();document.getElementById(ids[Math.min(idx+1,ids.length-1)]).scrollIntoView({behavior:'smooth'});}
+  if(e.key==='ArrowUp'||e.key==='PageUp'){e.preventDefault();document.getElementById(ids[Math.max(idx-1,0)]).scrollIntoView({behavior:'smooth'});}
+});
+</script>
+</body>
+</html>
