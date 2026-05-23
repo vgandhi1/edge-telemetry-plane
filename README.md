@@ -19,7 +19,7 @@
 [![Live Presentation](https://img.shields.io/badge/presentation-live-brightgreen?style=flat-square)](https://vgandhi1.github.io/edge-telemetry-plane/)
 [![View Slides](https://img.shields.io/badge/slides-presentation.html-f97316?style=flat-square)](presentation.html)
 
-📊 **[Live Presentation](https://vgandhi1.github.io/edge-telemetry-plane/)** · [Static slides](presentation.html) *(Pages: **Settings → Pages → Source: GitHub Actions**, then run **Deploy GitHub Pages** workflow)*
+📊 **[Live Presentation](https://vgandhi1.github.io/edge-telemetry-plane/)** · [Static slides](presentation.html) *(Pages: **Settings → Pages → Deploy from branch → `gh-pages` / (root)** — not `main`; then run **Deploy GitHub Pages** workflow)*
 
 [Architecture](docs/architecture.md) · [Implementation plan](docs/implementation.md) · [Docs index](docs/readme.md) · [GitHub profile hints](docs/github-repository-metadata.md)
 
