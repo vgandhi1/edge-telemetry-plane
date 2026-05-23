@@ -16,6 +16,11 @@
 [![NATS](https://img.shields.io/badge/buffer-NATS_JetStream-27AAEE?style=flat-square)](https://nats.io/)
 [![TimescaleDB](https://img.shields.io/badge/DB-TimescaleDB-FDB515?style=flat-square)](https://www.timescale.com/)
 
+[![Live Presentation](https://img.shields.io/badge/presentation-live-brightgreen?style=flat-square)](https://vgandhi1.github.io/edge-telemetry-plane/)
+[![View Slides](https://img.shields.io/badge/slides-presentation.html-f97316?style=flat-square)](presentation.html)
+
+📊 **[Live Presentation](https://vgandhi1.github.io/edge-telemetry-plane/)** · [Static slides](presentation.html) *(Pages: **Settings → Pages → Source: GitHub Actions**, then run **Deploy GitHub Pages** workflow)*
+
 [Architecture](docs/architecture.md) · [Implementation plan](docs/implementation.md) · [Docs index](docs/readme.md) · [GitHub profile hints](docs/github-repository-metadata.md)
 
 </div>
@@ -88,6 +93,7 @@ Full design: [docs/architecture.md](docs/architecture.md)
 
 | Path | Purpose |
 | :--- | :--- |
+| [`presentation.html`](presentation.html) | Static slide deck (GitHub Pages) |
 | [`proto/`](proto/) | `detcp.v1` Protobuf + gRPC `EdgeSyncService` |
 | [`edge/`](edge/) | `edge-gateway`, `edge-sync` (Rust) |
 | [`cloud-plane/`](cloud-plane/) | gRPC ingress + Kafka consumer → DB (Go) |
