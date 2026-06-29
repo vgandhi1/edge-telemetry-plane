@@ -1,3 +1,8 @@
+> ⚠️ **ARCHIVED** — now maintained as part of
+> [vgandhi1/industrial-telemetry](https://github.com/vgandhi1/industrial-telemetry/tree/main/edge-telemetry-plane) (archived: 2026-06-28).
+> The live demo is at: https://vgandhi1.github.io/industrial-telemetry/edge-telemetry-plane/
+
+
 > **⚠️ Archived (2026-06-28)** — Folded into [**industrial-telemetry**](https://github.com/vgandhi1/industrial-telemetry). See [ARCHIVED.md](./ARCHIVED.md).
 
 <div align="center">
